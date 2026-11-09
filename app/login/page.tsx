@@ -19,17 +19,27 @@ export default function Login() {
     setErrorMsg('');
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        setErrorMsg('ইমেল বা পাসওয়ার্ড ভুল হয়েছে। আবার চেষ্টা করো।');
+        return;
+      }
 
-      // লগইন সফল হলে হোমপেজে রিডাইরেক্ট
+      // Check if email is verified
+      if (data.user && !data.user.email_confirmed_at) {
+        alert("আপনার ইমেইলটি এখনো ভেরিফাই করা হয়নি! দয়া করে আপনার ইনবক্স থেকে ইমেইল কনফার্ম করুন।");
+        await supabase.auth.signOut();
+        return;
+      }
+
+      // লগইন সফল হলে ড্যাশবোর্ডে রিডাইরেক্ট
       router.push('/dashboard');
     } catch (error: any) {
-      setErrorMsg('ইমেল বা পাসওয়ার্ড ভুল হয়েছে। আবার চেষ্টা করো।');
+      setErrorMsg('লগইন করতে সমস্যা হয়েছে। আবার চেষ্টা করো।');
     } finally {
       setLoading(false);
     }
@@ -55,7 +65,7 @@ export default function Login() {
               প্রযত্ন-এ লগইন করুন
             </h1>
             <p className="text-slate-500 text-xs">
-              account খুলার সময় যে ইমেল ব্যবহার করেছিলে, সেই ইমেল এবং পাসওয়ার্ড দিয়ে লগইন করো।
+              account খুলার সময় যে ইমেল ব্যবহার করেছিলে, সেই ইমেল এবং পাসওয়ার্ড দিয়ে লগইন করো।
             </p>
           </div>
 
@@ -82,13 +92,13 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">পাসওয়ার্ড</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">পাসওয়ার্ড</label>
               <div className="relative">
                 <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5" />
                 <input 
                   type="password" 
                   required
-                  placeholder="পাসওয়ার্ড লিখুন"
+                  placeholder="পাসওয়ার্ড লিখুন"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:bg-white text-slate-800 text-sm transition"

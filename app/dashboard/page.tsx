@@ -289,7 +289,7 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4">
                 <Link 
-                  href="/qna"
+                  href="/mentor/qna"
                   className="border border-slate-200 rounded-xl p-3.5 hover:border-purple-400 transition bg-slate-50/50 block group cursor-pointer"
                 >
                   <div className="flex items-center justify-between sm:block">
@@ -307,7 +307,7 @@ export default function Dashboard() {
                 </Link>
 
                 <Link 
-                  href="/qna"
+                  href="/mentor/qna"
                   className="border border-slate-200 rounded-xl p-3.5 hover:border-emerald-400 transition bg-slate-50/50 block group cursor-pointer"
                 >
                   <div className="flex items-center justify-between sm:block">
