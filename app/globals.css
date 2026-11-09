@@ -1,0 +1,10 @@
+@import url('https://fonts.maateen.me/solaiman-lipi/font.css');
+@import "tailwindcss";
+
+* {
+  font-family: 'SolaimanLipi', Arial, sans-serif !important;
+}
+
+body, input, textarea, select, button {
+  font-family: 'SolaimanLipi', Arial, sans-serif !important;
+}
