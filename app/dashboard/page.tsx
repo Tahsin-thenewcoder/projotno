@@ -441,24 +441,35 @@ export default function Dashboard() {
       </div>
 
       {/* Mobile Fixed Bottom App Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-4 sm:hidden flex justify-around items-center z-40 shadow-lg">
-        <Link href="/dashboard" className="flex flex-col items-center gap-0.5 text-emerald-600 font-bold">
-          <Home className="w-4 h-4" />
-          <span className="text-[9px]">হোম</span>
-        </Link>
-        <Link href="/qna" className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-emerald-600">
-          <MessageSquare className="w-4 h-4" />
-          <span className="text-[9px]">Q&A</span>
-        </Link>
-        <Link href="/anonymous-help" className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-purple-600">
-          <ShieldAlert className="w-4 h-4" />
-          <span className="text-[9px]">হেল্প</span>
-        </Link>
-        <button onClick={handleLogout} className="flex flex-col items-center gap-0.5 text-rose-500">
-          <LogOut className="w-4 h-4" />
-          <span className="text-[9px]">লগআউট</span>
-        </button>
-      </div>
+<div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-4 sm:hidden flex justify-around items-center z-40 shadow-lg">
+  <Link href="/dashboard" className="flex flex-col items-center gap-0.5 text-emerald-600 font-bold">
+    <Home className="w-4 h-4" />
+    <span className="text-[9px]">হোম</span>
+  </Link>
+  
+  {/* রোল চেক (lowercase করে চেক করা হচ্ছে যাতে Mentor/mentor যেকোনো বানানেই কাজ করে) */}
+  <Link 
+    href={
+      profile?.role?.toLowerCase() === 'mentor'
+        ? "/mentor/qna" 
+        : "/qna"
+    } 
+    className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-emerald-600"
+  >
+    <MessageSquare className="w-4 h-4" />
+    <span className="text-[9px]">Q&A</span>
+  </Link>
+
+  <Link href="/anonymous-help" className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-purple-600">
+    <ShieldAlert className="w-4 h-4" />
+    <span className="text-[9px]">হেল্প</span>
+  </Link>
+  
+  <button onClick={handleLogout} className="flex flex-col items-center gap-0.5 text-rose-500">
+    <LogOut className="w-4 h-4" />
+    <span className="text-[9px]">লগআউট</span>
+  </button>
+</div>
     </div>
   );
 }

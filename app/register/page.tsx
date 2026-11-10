@@ -41,10 +41,13 @@ export default function Register() {
     setErrorMsg('');
 
     try {
-      // 1. Supabase Auth-এ অ্যাকাউন্ট তৈরি
+      // 1. Supabase Auth-এ অ্যাকাউন্ট তৈরি (Email Redirect URL সহ)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          emailRedirectTo: 'https://projotno-bkhs.vercel.app/login?verified=true',
+        },
       });
 
       if (authError) {
@@ -76,7 +79,7 @@ export default function Register() {
       setSubmitted(true);
     } catch (error: any) {
       console.error('Registration Error Details:', error);
-      setErrorMsg(error?.message || 'রেজিস্ট্রেশন করতে সমস্যা হয়েছে, আবার চেষ্টা করো।');
+      setErrorMsg(error?.message || 'রেজিস্ট্রেশন করতে সমস্যা হয়েছে, আবার চেষ্টা করো।');
     } finally {
       setLoading(false);
     }
@@ -124,7 +127,7 @@ export default function Register() {
               </div>
               <h2 className="text-2xl font-bold text-slate-900">রেজিস্ট্রেশন সফল হয়েছে!</h2>
               <p className="text-slate-600 text-sm max-w-md mx-auto">
-                ধন্যবাদ, <span className="font-bold text-emerald-600">{formData.fullName}</span>! তোমার একাউন্ট তৈরি হয়েছে। এখন তুমি লগইন করতে পারো।
+                ধন্যবাদ, <span className="font-bold text-emerald-600">{formData.fullName}</span>! তোমার ইমেইলে একটি কনফার্মেশন লিংক পাঠানো হয়েছে। ইমেইল ভেরিফাই করে লগইন করো।
               </p>
               <div className="pt-4">
                 <Link 
@@ -171,7 +174,7 @@ export default function Register() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">পাসওয়ার্ড *</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">পাসওয়ার্ড *</label>
                   <div className="relative">
                     <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5" />
                     <input 
@@ -252,7 +255,7 @@ export default function Register() {
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">অ্যাডমিশন লক্ষ্য *</label>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { id: 'Engineering', label: 'Engineering', desc: 'বুয়েট, রুয়েট, চুয়েট' },
+                    { id: 'Engineering', label: 'Engineering', desc: 'বুয়েট, রুয়েট, চুয়েট' },
                     { id: 'Medical', label: 'Medical', desc: 'মেডিকেল ও ডেন্টাল' },
                     { id: 'Varsity', label: 'Varsity (A/B/C)', desc: 'ঢাবি, চবি, রাবি, গুচ্ছ' },
                     { id: 'Defence', label: 'Armed Forces', desc: 'সেনা, নৌ, বিমানবাহিনী' },
