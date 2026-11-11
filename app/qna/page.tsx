@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import QnAChat from '@/components/qna/qnachat';
 import NotificationBell from '@/components/qna/NotificationBell';
+import VoiceRecorder from '@/components/VoiceRecorder';
+import AudioPlayer from '@/components/AudioPlayer';
 import { ALL_SUBJECTS, SUBJECTS, statusMeta, timeAgo, uploadQnaImage } from '@/lib/qna';
 
 export default function StudentQnAPage() {
@@ -32,6 +34,7 @@ export default function StudentQnAPage() {
   const [description, setDescription] = useState('');
   const [formSubject, setFormSubject] = useState(SUBJECTS[0]);
   const [file, setFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
@@ -73,12 +76,12 @@ export default function StudentQnAPage() {
   }, [loading, openId]);
 
   const resetForm = () => {
-    setEditing(null); setTitle(''); setDescription(''); setFormSubject(SUBJECTS[0]); setFile(null); setShowModal(false);
+    setEditing(null); setTitle(''); setDescription(''); setFormSubject(SUBJECTS[0]); setFile(null); setAudioUrl(''); setShowModal(false);
   };
 
   const startEdit = (post: any) => {
     setEditing(post); setTitle(post.title); setDescription(post.description);
-    setFormSubject(post.subject); setFile(null); setShowModal(true);
+    setFormSubject(post.subject); setFile(null); setAudioUrl(post.audio_url || ''); setShowModal(true);
   };
 
   const submitPost = async (e: React.FormEvent) => {
@@ -91,7 +94,7 @@ export default function StudentQnAPage() {
 
       if (editing) {
         const { error } = await supabase.from('qna_posts')
-          .update({ title: title.trim(), description: description.trim(), subject: formSubject, image_url })
+          .update({ title: title.trim(), description: description.trim(), subject: formSubject, image_url, audio_url: audioUrl || null })
           .eq('id', editing.id);
         if (error) throw error;
       } else {
@@ -102,6 +105,7 @@ export default function StudentQnAPage() {
           description: description.trim(),
           subject: formSubject,
           image_url,
+          audio_url: audioUrl || null,
         });
         if (error) throw error;
       }
@@ -175,6 +179,13 @@ export default function StudentQnAPage() {
           <p className="text-[10px] text-slate-400 mt-1.5">{mine ? 'আপনার প্রশ্ন' : post.user_name}</p>
         </div>
 
+        {/* প্রশ্নের ভয়েস মেসেজ থাকলে প্লেয়ার দেখাবে */}
+        {post.audio_url && (
+          <div className="pt-1">
+            <AudioPlayer src={post.audio_url} />
+          </div>
+        )}
+
         {post.image_url && (
           <a href={post.image_url} target="_blank" rel="noreferrer">
             <img src={post.image_url} alt="প্রশ্নের ছবি" className="max-h-64 rounded-2xl border border-slate-200 object-cover" />
@@ -194,6 +205,14 @@ export default function StudentQnAPage() {
               </div>
             </div>
             <p className="text-xs sm:text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ans.answer_text}</p>
+            
+            {/* উত্তরের ভয়েস নোট */}
+            {ans.audio_url && (
+              <div className="pt-1">
+                <AudioPlayer src={ans.audio_url} />
+              </div>
+            )}
+
             {ans.image_url && (
               <a href={ans.image_url} target="_blank" rel="noreferrer">
                 <img src={ans.image_url} alt="উত্তরের ছবি" className="max-h-60 rounded-xl border border-emerald-200 object-cover" />
@@ -202,66 +221,84 @@ export default function StudentQnAPage() {
           </div>
         )}
 
-        {/* শুধু নিজের প্রশ্নে: প্রাইভেট চ্যাট + মতামত */}
-        {mine && ans && (
-          <>
-            <button
-              onClick={() => setOpenId(expanded ? null : post.id)}
-              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-2xl py-2.5 cursor-pointer"
-            >
-              <MessageCircle className="w-4 h-4" />
-              {expanded ? 'চ্যাট বন্ধ করুন' : `${ans.mentor_name}-এর সাথে প্রাইভেট চ্যাট`}
-            </button>
+        {/* শুধু নিজের প্রশ্নে: প্রাইভেট চ্যাট + ফাইন-টিউনড ফিডব্যাক ও Reopen সেকশন */}
+{mine && ans && (
+  <div className="space-y-3 pt-1">
+    {/* প্রাইভেট চ্যাট টগল বাটন */}
+    <button
+      onClick={() => setOpenId(expanded ? null : post.id)}
+      className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-2xl py-2.5 cursor-pointer transition"
+    >
+      <MessageCircle className="w-4 h-4" />
+      {expanded ? 'চ্যাট বন্ধ করুন' : `${ans.mentor_name}-এর সাথে প্রাইভেট চ্যাট`}
+    </button>
 
-            {expanded && (
-              <div className="space-y-3">
-                <QnAChat answerId={ans.id} me={profile} otherName={ans.mentor_name} />
+    {/* প্রাইভেট চ্যাট কম্পোনেন্ট */}
+    {expanded && (
+      <QnAChat answerId={ans.id} me={profile} otherName={ans.mentor_name} />
+    )}
 
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5">
-                  <p className="text-[11px] font-bold text-slate-600">উত্তরে কি সন্তুষ্ট?</p>
-                  <div className="flex gap-2">
-                    <button
-                      disabled={busy || post.status === 'satisfied'}
-                      onClick={() => rate(post, true)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-xl border transition cursor-pointer ${
-                        post.status === 'satisfied'
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'
-                      }`}
-                    >
-                      <ThumbsUp className="w-4 h-4" /> সন্তুষ্ট
-                    </button>
-                    <button
-                      disabled={busy || post.status === 'unsatisfied'}
-                      onClick={() => rate(post, false)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-xl border transition cursor-pointer ${
-                        post.status === 'unsatisfied'
-                          ? 'bg-rose-600 text-white border-rose-600'
-                          : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'
-                      }`}
-                    >
-                      <ThumbsDown className="w-4 h-4" /> অসন্তুষ্ট
-                    </button>
-                  </div>
-
-                  {post.status === 'unsatisfied' && (
-                    <p className="text-[11px] text-slate-500">
-                      এই মেন্টরকেই চ্যাটে আরও জিজ্ঞেস করতে পারো, অথবা নিচের বাটনে অন্য টিচারের কাছে পাঠাতে পারো।
-                    </p>
-                  )}
-
-                  <button
-                    disabled={busy}
-                    onClick={() => reopenForOther(post, ans.mentor_name)}
-                    className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl py-2.5 cursor-pointer"
-                  >
-                    <RotateCcw className="w-4 h-4" /> অন্য টিচারের জন্য প্রশ্নটি reopen করুন
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
+    {/* ফিডব্যাক ও Reopen কার্ড (সবসময় দৃশ্যমান থাকবে) */}
+    <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-3.5 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-bold text-slate-700">মেন্টরের উত্তরে আপনি কি সন্তুষ্ট?</p>
+        {post.status === 'satisfied' && (
+          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> সমাধানকৃত
+          </span>
         )}
+        {post.status === 'unsatisfied' && (
+          <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2.5 py-0.5 rounded-full">
+            অসন্তুষ্ট
+          </span>
+        )}
+      </div>
+
+      {/* রেটিং বাটন সমূহের ফ্লেক্স লেআউট */}
+      <div className="flex gap-2">
+        <button
+          disabled={busy || post.status === 'satisfied'}
+          onClick={() => rate(post, true)}
+          className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-xl border transition cursor-pointer ${
+            post.status === 'satisfied'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+              : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'
+          }`}
+        >
+          <ThumbsUp className="w-4 h-4" /> সন্তুষ্ট
+        </button>
+
+        <button
+          disabled={busy || post.status === 'unsatisfied'}
+          onClick={() => rate(post, false)}
+          className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-xl border transition cursor-pointer ${
+            post.status === 'unsatisfied'
+              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+              : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'
+          }`}
+        >
+          <ThumbsDown className="w-4 h-4" /> অসন্তুষ্ট
+        </button>
+      </div>
+
+      {/* অসন্তুষ্ট হলে সাহায্যকারী গাইড ও অন্য টিচারের কাছে পাঠানোর বাটন */}
+      {post.status === 'unsatisfied' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+          <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+            💡 চ্যাটে টিচারকে আবারো সরাসরি ভয়েস বা টেক্সটে জিজ্ঞেস করতে পারো। অন্য টিচারের উত্তর চাইলে নিচের বাটনে চাপ দাও:
+          </p>
+          <button
+            disabled={busy}
+            onClick={() => reopenForOther(post, ans.mentor_name)}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-800 bg-white hover:bg-amber-100 border border-amber-300 rounded-xl py-2 cursor-pointer transition shadow-2xs"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> অন্য টিচারের জন্য প্রশ্নটি Reopen করুন
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
         {/* উত্তরের আগে নিজের প্রশ্ন এডিট/ডিলিট */}
         {mine && !ans && post.status === 'open' && (
@@ -348,14 +385,29 @@ export default function StudentQnAPage() {
             </select>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="প্রশ্নের শিরোনাম" required
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500" />
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="বিস্তারিত লিখুন..." rows={5} required
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="বিস্তারিত লিখুন..." rows={4} required
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500" />
 
-            <div>
-              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-emerald-400 rounded-xl py-3 text-xs font-semibold text-slate-500 cursor-pointer">
-                <ImagePlus className="w-4 h-4" /> ছবি যোগ করুন (সর্বোচ্চ ৫ MB)
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-              </label>
+            {/* ছবি ও ভয়েস নোট আপলোড সেকশন */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 border border-slate-200 rounded-xl p-2 bg-slate-50">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-emerald-600 cursor-pointer">
+                  <ImagePlus className="w-4 h-4 text-emerald-600" /> ছবি যোগ করুন
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                </label>
+
+                {/* ভয়েস রেকর্ডার 컴পোনেন্ট */}
+                <VoiceRecorder onAudioUploaded={(url) => setAudioUrl(url)} onClearAudio={() => setAudioUrl('')} />
+              </div>
+
+              {/* অডিও আপলোড হলে প্রিভিউ দেখাবে */}
+              {audioUrl && (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-2 rounded-xl">
+                  <AudioPlayer src={audioUrl} />
+                  <button type="button" onClick={() => setAudioUrl('')} className="text-xs text-rose-600 font-bold px-2">সরান</button>
+                </div>
+              )}
+
               {(file || editing?.image_url) && (
                 <div className="mt-2 flex items-center gap-2">
                   <img src={file ? URL.createObjectURL(file) : editing.image_url} alt="" className="w-16 h-16 rounded-xl object-cover border" />

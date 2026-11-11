@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { ArrowLeft, ImagePlus, X, Edit2, Trash2, MessageCircle, Send, Inbox, BookOpen } from 'lucide-react';
 import QnAChat from '@/components/qna/qnachat';
 import NotificationBell from '@/components/qna/NotificationBell';
+import VoiceRecorder from '@/components/VoiceRecorder';
+import AudioPlayer from '@/components/AudioPlayer';
 import { ALL_SUBJECTS, SUBJECTS, statusMeta, timeAgo, uploadQnaImage } from '@/lib/qna';
 
 export default function MentorQnAPage() {
@@ -20,11 +22,12 @@ export default function MentorQnAPage() {
   const [subject, setSubject] = useState(ALL_SUBJECTS);
   const [openId, setOpenId] = useState<string | null>(null);
 
-  // উত্তর দেওয়া / এডিট
+  // উত্তর দেওয়া / এডিট
   const [target, setTarget] = useState<any>(null);        // যে প্রশ্নের উত্তর দিচ্ছি
   const [editingAns, setEditingAns] = useState<any>(null);
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
@@ -65,7 +68,7 @@ export default function MentorQnAPage() {
     }
   }, [loading, openId]);
 
-  // আমার জন্য অমীমাংসিত: কেউ উত্তর দেয়নি + আমি excluded নই
+  // আমার জন্য অমীমাংসিত: কেউ উত্তর দেয়নি + আমি excluded নই
   const unsolved = useMemo(
     () => posts.filter((p) => p.status === 'open' && !(p.excluded_mentor_ids || []).includes(profile?.id)),
     [posts, profile]
@@ -84,23 +87,32 @@ export default function MentorQnAPage() {
     .filter((p) => myAnswers.some((a) => a.post_id === p.id))
     .filter((p) => subject === ALL_SUBJECTS || p.subject === subject);
 
-  const closeModal = () => { setTarget(null); setEditingAns(null); setText(''); setFile(null); };
+  const closeModal = () => { setTarget(null); setEditingAns(null); setText(''); setFile(null); setAudioUrl(''); };
 
-  const startAnswer = (post: any) => { setTarget(post); setEditingAns(null); setText(''); setFile(null); };
-  const startEdit = (post: any, ans: any) => { setTarget(post); setEditingAns(ans); setText(ans.answer_text); setFile(null); };
+  const startAnswer = (post: any) => { setTarget(post); setEditingAns(null); setText(''); setFile(null); setAudioUrl(''); };
+  const startEdit = (post: any, ans: any) => { setTarget(post); setEditingAns(ans); setText(ans.answer_text); setFile(null); setAudioUrl(ans.audio_url || ''); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim() || !target || submitting) return;
+    if ((!text.trim() && !audioUrl) || !target || submitting) return;
     setSubmitting(true);
     try {
       let image_url: string | null = editingAns?.image_url || null;
       if (file) image_url = await uploadQnaImage(file, 'answers');
 
       const { error } = editingAns
-        ? await supabase.rpc('qna_edit_answer', { p_answer_id: editingAns.id, p_text: text, p_image: image_url })
-        : await supabase.rpc('qna_submit_answer', { p_post_id: target.id, p_text: text, p_image: image_url });
-      if (error) throw error;
+        ? await supabase.rpc('qna_edit_answer', { p_answer_id: editingAns.id, p_text: text, p_image: image_url, p_audio: audioUrl || null })
+        : await supabase.rpc('qna_submit_answer', { p_post_id: target.id, p_text: text, p_image: image_url, p_audio: audioUrl || null });
+      
+      // যদি RPC সরাসরি p_audio না নেয়, তবে ফলব্যাক আপডেট
+      if (error && error.message.includes('p_audio')) {
+        const { error: fallbackErr } = editingAns
+          ? await supabase.from('qna_answers').update({ answer_text: text, image_url, audio_url: audioUrl || null }).eq('id', editingAns.id)
+          : await supabase.from('qna_answers').insert({ post_id: target.id, mentor_id: profile.id, mentor_name: profile.full_name, answer_text: text, image_url, audio_url: audioUrl || null });
+        if (fallbackErr) throw fallbackErr;
+      } else if (error) {
+        throw error;
+      }
 
       closeModal();
       await load();
@@ -134,7 +146,7 @@ export default function MentorQnAPage() {
           {profile && <NotificationBell userId={profile.id} />}
         </div>
 
-        {/* ক্যাটাগরি অনুযায়ী অমীমাংসিত সংখ্যা */}
+        {/* ক্যাটাগরি অনুযায়ী অমীমাংসিত সংখ্যা */}
         <div className="bg-white border border-slate-200 rounded-3xl p-3.5 sm:p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h1 className="font-extrabold text-slate-900 text-base sm:text-lg">মেন্টর Q&A</h1>
@@ -193,6 +205,11 @@ export default function MentorQnAPage() {
                   <h3 className="text-sm font-bold text-slate-900">{post.title}</h3>
                   <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed">{post.description}</p>
                 </div>
+                {post.audio_url && (
+                  <div className="pt-1">
+                    <AudioPlayer src={post.audio_url} />
+                  </div>
+                )}
                 {post.image_url && (
                   <a href={post.image_url} target="_blank" rel="noreferrer">
                     <img src={post.image_url} alt="প্রশ্নের ছবি" className="max-h-64 rounded-2xl border border-slate-200 object-cover" />
@@ -229,7 +246,7 @@ export default function MentorQnAPage() {
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${meta.cls}`}>{meta.label}</span>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg border bg-slate-100 text-slate-500 border-slate-200">
-                          শিক্ষার্থী অন্য টিচারের কাছে পাঠিয়েছে
+                          শিক্ষার্থী অন্য টিচারের কাছে পাঠিয়েছে
                         </span>
                       )}
                     </div>
@@ -240,11 +257,25 @@ export default function MentorQnAPage() {
                     <h3 className="text-sm font-bold text-slate-900">{post.title}</h3>
                     <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap">{post.description}</p>
                   </div>
+
+                  {post.audio_url && (
+                    <div className="pt-1">
+                      <AudioPlayer src={post.audio_url} />
+                    </div>
+                  )}
+
                   {post.image_url && <img src={post.image_url} alt="" className="max-h-52 rounded-2xl border border-slate-200 object-cover" />}
 
                   <div className="bg-purple-50/60 border border-purple-200 rounded-2xl p-3.5 space-y-2">
                     <p className="text-[10px] font-bold text-purple-700">আমার উত্তর</p>
                     <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">{ans.answer_text}</p>
+                    
+                    {ans.audio_url && (
+                      <div className="pt-1">
+                        <AudioPlayer src={ans.audio_url} />
+                      </div>
+                    )}
+
                     {ans.image_url && <img src={ans.image_url} alt="" className="max-h-52 rounded-xl border border-purple-200 object-cover" />}
                     {active && (
                       <div className="flex gap-2 pt-1">
@@ -287,17 +318,37 @@ export default function MentorQnAPage() {
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-1.5">
               <p className="text-xs font-bold text-slate-800">{target.title}</p>
               <p className="text-[11px] text-slate-600 whitespace-pre-wrap">{target.description}</p>
+              {target.audio_url && (
+                <div className="pt-1">
+                  <AudioPlayer src={target.audio_url} />
+                </div>
+              )}
               {target.image_url && <img src={target.image_url} alt="" className="max-h-40 rounded-xl border object-cover" />}
             </div>
 
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} required placeholder="সহজ ভাষায় ধাপে ধাপে বুঝিয়ে লিখুন..."
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} placeholder="সহজ ভাষায় ধাপে ধাপে বুঝিয়ে লিখুন..."
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-purple-500" />
 
-            <div>
-              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-purple-400 rounded-xl py-3 text-xs font-semibold text-slate-500 cursor-pointer">
-                <ImagePlus className="w-4 h-4" /> সমাধানের ছবি যোগ করুন (সর্বোচ্চ ৫ MB)
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-              </label>
+            {/* ছবি ও ভয়েস নোট আপলোড সেকশন */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 border border-slate-200 rounded-xl p-2 bg-slate-50">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-purple-600 cursor-pointer">
+                  <ImagePlus className="w-4 h-4 text-purple-600" /> সমাধানের ছবি যোগ করুন
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                </label>
+
+                {/* ভয়েস রেকর্ডার কম্পোনেন্ট */}
+                <VoiceRecorder onAudioUploaded={(url) => setAudioUrl(url)} onClearAudio={() => setAudioUrl('')} />
+              </div>
+
+              {/* ভয়েস রেকর্ড করা হলে প্রিভিউ দেখাবে */}
+              {audioUrl && (
+                <div className="flex items-center justify-between bg-purple-50 border border-purple-200 p-2 rounded-xl">
+                  <AudioPlayer src={audioUrl} />
+                  <button type="button" onClick={() => setAudioUrl('')} className="text-xs text-rose-600 font-bold px-2">সরান</button>
+                </div>
+              )}
+
               {(file || editingAns?.image_url) && (
                 <div className="mt-2 flex items-center gap-2">
                   <img src={file ? URL.createObjectURL(file) : editingAns.image_url} alt="" className="w-16 h-16 rounded-xl object-cover border" />
@@ -306,7 +357,7 @@ export default function MentorQnAPage() {
               )}
             </div>
 
-            <button type="submit" disabled={submitting || !text.trim()}
+            <button type="submit" disabled={submitting || (!text.trim() && !audioUrl)}
               className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-sm py-3 rounded-2xl flex items-center justify-center gap-2 cursor-pointer">
               <Send className="w-4 h-4" /> {submitting ? 'জমা হচ্ছে...' : editingAns ? 'আপডেট করুন' : 'উত্তর জমা দিন'}
             </button>

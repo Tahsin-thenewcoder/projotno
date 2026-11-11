@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -58,7 +57,6 @@ export default function Dashboard() {
         await loadPendingMentors();
       }
     }
-
     await loadNotifications(session.user.id);
     setLoading(false);
   };
@@ -81,9 +79,20 @@ export default function Dashboard() {
     if (data) setNotifications(data);
   };
 
-  const markNotifAsRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
-    setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
+  // নোটিফিকেশনে ক্লিক করলে Read মার্ক হবে এবং সরাসরি উত্তর/চ্যাটে নিয়ে যাবে
+  const handleNotifClick = async (n: any) => {
+    if (!n.is_read) {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id);
+      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, is_read: true } : item)));
+    }
+    setShowNotifMenu(false);
+
+    if (n.link) {
+      router.push(n.link);
+    } else if (n.post_id) {
+      const basePath = ['mentor', 'admin'].includes(profile?.role?.toLowerCase()) ? '/mentor/qna' : '/qna';
+      router.push(`${basePath}?post=${n.post_id}`);
+    }
   };
 
   const handleApproveMentor = async (mentorId: string) => {
@@ -93,9 +102,7 @@ export default function Dashboard() {
         .from('profiles')
         .update({ role: 'mentor' })
         .eq('id', mentorId);
-
       if (error) throw error;
-
       alert('মেন্টর আবেদন সফলভাবে অ্যাপ্রুভ করা হয়েছে!');
       setPendingMentors(pendingMentors.filter(m => m.id !== mentorId));
     } catch (err: any) {
@@ -118,7 +125,7 @@ export default function Dashboard() {
     );
   }
 
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'mentor';
+  const isAdmin = ['admin', 'mentor'].includes(profile?.role?.toLowerCase());
   const unreadNotifs = notifications.filter(n => !n.is_read);
 
   const getBadgeTitle = (helps: number) => {
@@ -189,13 +196,14 @@ export default function Dashboard() {
                           {notifications.map((n) => (
                             <div 
                               key={n.id} 
-                              onClick={() => markNotifAsRead(n.id)}
-                              className={`p-2 rounded-xl text-xs cursor-pointer transition ${
-                                n.is_read ? 'bg-slate-50 text-slate-500' : 'bg-emerald-50 text-slate-800 font-semibold border border-emerald-100'
+                              onClick={() => handleNotifClick(n)}
+                              className={`p-2.5 rounded-xl text-xs cursor-pointer transition ${
+                                n.is_read ? 'bg-slate-50 text-slate-500 hover:bg-slate-100' : 'bg-emerald-50 text-slate-800 border border-emerald-100 hover:bg-emerald-100/70'
                               }`}
                             >
-                              <p>{n.message}</p>
-                              <span className="text-[9px] text-slate-400 mt-0.5 block">
+                              {n.title && <p className="font-bold text-slate-900">{n.title}</p>}
+                              {n.message && <p className={n.title ? 'text-[11px] text-slate-600 mt-0.5' : 'font-semibold'}>{n.message}</p>}
+                              <span className="text-[9px] text-slate-400 mt-1 block">
                                 {new Date(n.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
@@ -370,7 +378,6 @@ export default function Dashboard() {
                         <p className="text-slate-600 font-medium text-[11px]">{m.current_college}</p>
                         <p className="text-slate-400 text-[10px]">SSC: {m.ssc_batch} • ফোন: {m.phone || 'N/A'}</p>
                       </div>
-
                       <button
                         onClick={() => handleApproveMentor(m.id)}
                         disabled={approvingId === m.id}
@@ -423,7 +430,7 @@ export default function Dashboard() {
               </Link>
 
               <Link 
-                href="/anonymous-help"
+                href="/anonymous-help" 
                 className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs hover:border-purple-500 transition group cursor-pointer flex flex-col justify-between"
               >
                 <div className="space-y-2">
@@ -441,35 +448,30 @@ export default function Dashboard() {
       </div>
 
       {/* Mobile Fixed Bottom App Bar */}
-<div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-4 sm:hidden flex justify-around items-center z-40 shadow-lg">
-  <Link href="/dashboard" className="flex flex-col items-center gap-0.5 text-emerald-600 font-bold">
-    <Home className="w-4 h-4" />
-    <span className="text-[9px]">হোম</span>
-  </Link>
-  
-  {/* রোল চেক (lowercase করে চেক করা হচ্ছে যাতে Mentor/mentor যেকোনো বানানেই কাজ করে) */}
-  <Link 
-    href={
-      profile?.role?.toLowerCase() === 'mentor'
-        ? "/mentor/qna" 
-        : "/qna"
-    } 
-    className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-emerald-600"
-  >
-    <MessageSquare className="w-4 h-4" />
-    <span className="text-[9px]">Q&A</span>
-  </Link>
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-4 sm:hidden flex justify-around items-center z-40 shadow-lg">
+        <Link href="/dashboard" className="flex flex-col items-center gap-0.5 text-emerald-600 font-bold">
+          <Home className="w-4 h-4" />
+          <span className="text-[9px]">হোম</span>
+        </Link>
+        
+        <Link 
+          href={isAdmin ? "/mentor/qna" : "/qna"} 
+          className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-emerald-600"
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span className="text-[9px]">Q&A</span>
+        </Link>
 
-  <Link href="/anonymous-help" className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-purple-600">
-    <ShieldAlert className="w-4 h-4" />
-    <span className="text-[9px]">হেল্প</span>
-  </Link>
-  
-  <button onClick={handleLogout} className="flex flex-col items-center gap-0.5 text-rose-500">
-    <LogOut className="w-4 h-4" />
-    <span className="text-[9px]">লগআউট</span>
-  </button>
-</div>
+        <Link href="/anonymous-help" className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-purple-600">
+          <ShieldAlert className="w-4 h-4" />
+          <span className="text-[9px]">হেল্প</span>
+        </Link>
+        
+        <button onClick={handleLogout} className="flex flex-col items-center gap-0.5 text-rose-500">
+          <LogOut className="w-4 h-4" />
+          <span className="text-[9px]">লগআউট</span>
+        </button>
+      </div>
     </div>
   );
 }
