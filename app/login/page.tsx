@@ -1,20 +1,28 @@
 "use client";
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Mail, Lock, ArrowLeft, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, GraduationCap, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
   const router = useRouter();
   const searchParams = useSearchParams();
   const isVerified = searchParams.get('verified') === 'true';
+
+  // ইমেইল ভেরিফাই করে লগইন পেজে আসলে পুরনো অটো-সেশন ক্লিয়ার করা যাতে ইউজার ফ্রেশ লগইন করে
+  useEffect(() => {
+    if (isVerified) {
+      supabase.auth.signOut();
+    }
+  }, [isVerified]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,13 +36,17 @@ function LoginForm() {
       });
 
       if (error) {
-        setErrorMsg('ইমেল বা পাসওয়ার্ড ভুল হয়েছে। আবার চেষ্টা করো।');
+        if (error.message.toLowerCase().includes('email not confirmed')) {
+          setErrorMsg('আপনার ইমেইলটি এখনো ভেরিফাই করা হয়নি! ইনবক্স অথবা Spam/Junk ফোল্ডার চেক করে ইমেইল ভেরিফাই করুন।');
+        } else {
+          setErrorMsg('ইমেল বা পাসওয়ার্ড ভুল হয়েছে। আবার চেষ্টা করো।');
+        }
         return;
       }
 
       // Check if email is verified
       if (data.user && !data.user.email_confirmed_at) {
-        alert("আপনার ইমেইলটি এখনো ভেরিফাই করা হয়নি! দয়া করে আপনার ইনবক্স থেকে ইমেইল কনফার্ম করুন।");
+        setErrorMsg('আপনার ইমেইলটি এখনো ভেরিফাই করা হয়নি! ইনবক্স অথবা Spam ফোল্ডার চেক করে ইমেইল কনফার্ম করুন।');
         await supabase.auth.signOut();
         return;
       }
@@ -66,12 +78,12 @@ function LoginForm() {
       {isVerified && (
         <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-2xl flex items-center gap-2.5">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>আপনার ইমেইল সফলভাবে ভেরিফাইড হয়েছে! এখন পাসওয়ার্ড দিয়ে লগইন করুন।</span>
+          <span>আপনার ইমেইল সফলভাবে ভেরিফাইড হয়েছে! এখন পাসওয়ার্ড দিয়ে লগইন করুন।</span>
         </div>
       )}
 
       {errorMsg && (
-        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium">
+        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium leading-relaxed">
           {errorMsg}
         </div>
       )}
@@ -97,13 +109,21 @@ function LoginForm() {
           <div className="relative">
             <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5" />
             <input 
-              type="password" 
+              type={showPassword ? 'text' : 'password'} 
               required
               placeholder="পাসওয়ার্ড লিখুন"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:bg-white text-slate-800 text-sm transition"
+              className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:bg-white text-slate-800 text-sm transition"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
+              title={showPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
@@ -138,7 +158,7 @@ export default function Login() {
           হোমপেজে ফিরে যান
         </Link>
 
-        {/* Suspense দিয়ে র্যাপ করা হয়েছে */}
+        {/* Suspense দিয়ে র্যাপ করা হয়েছে */}
         <Suspense fallback={<div className="text-center p-8 text-slate-500 text-sm">লোড হচ্ছে...</div>}>
           <LoginForm />
         </Suspense>

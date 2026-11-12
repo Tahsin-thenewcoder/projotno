@@ -134,7 +134,7 @@ export default function StudentQnAPage() {
   };
 
   const reopenForOther = async (post: any, mentorName: string) => {
-    if (!confirm(`${mentorName} আর এই প্রশ্ন দেখতে পাবেন না। অন্য মেন্টররা উত্তর দিতে পারবেন। আপনি কি reopen করতে চান?`)) return;
+    if (!confirm(`${mentorName} আর এই প্রশ্ন দেখতে পাবেন না। অন্য মেন্টররা উত্তর দিতে পারবেন। তুমি কি reopen করতে চাও?`)) return;
     setBusyId(post.id);
     const { error } = await supabase.rpc('qna_reopen_for_other', { p_post_id: post.id });
     setBusyId(null);
@@ -176,7 +176,7 @@ export default function StudentQnAPage() {
         <div>
           <h3 className="text-sm sm:text-base font-bold text-slate-900">{post.title}</h3>
           <p className="text-xs sm:text-sm text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed">{post.description}</p>
-          <p className="text-[10px] text-slate-400 mt-1.5">{mine ? 'আপনার প্রশ্ন' : post.user_name}</p>
+          <p className="text-[10px] text-slate-400 mt-1.5">{mine ? 'তোমার প্রশ্ন' : post.user_name}</p>
         </div>
 
         {/* প্রশ্নের ভয়েস মেসেজ থাকলে প্লেয়ার দেখাবে */}
@@ -230,7 +230,7 @@ export default function StudentQnAPage() {
       className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-2xl py-2.5 cursor-pointer transition"
     >
       <MessageCircle className="w-4 h-4" />
-      {expanded ? 'চ্যাট বন্ধ করুন' : `${ans.mentor_name}-এর সাথে প্রাইভেট চ্যাট`}
+      {expanded ? 'চ্যাট বন্ধ করো' : `${ans.mentor_name}-এর সাথে প্রাইভেট চ্যাট`}
     </button>
 
     {/* প্রাইভেট চ্যাট কম্পোনেন্ট */}
@@ -241,7 +241,7 @@ export default function StudentQnAPage() {
     {/* ফিডব্যাক ও Reopen কার্ড (সবসময় দৃশ্যমান থাকবে) */}
     <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-3.5 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-bold text-slate-700">মেন্টরের উত্তরে আপনি কি সন্তুষ্ট?</p>
+        <p className="text-[11px] font-bold text-slate-700">মেন্টরের উত্তরে তুমি কি সন্তুষ্ট?</p>
         {post.status === 'satisfied' && (
           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" /> সমাধানকৃত
@@ -292,7 +292,7 @@ export default function StudentQnAPage() {
             onClick={() => reopenForOther(post, ans.mentor_name)}
             className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-800 bg-white hover:bg-amber-100 border border-amber-300 rounded-xl py-2 cursor-pointer transition shadow-2xs"
           >
-            <RotateCcw className="w-3.5 h-3.5" /> অন্য টিচারের জন্য প্রশ্নটি Reopen করুন
+            <RotateCcw className="w-3.5 h-3.5" /> অন্য টিচারের জন্য প্রশ্নটি Reopen করো
           </button>
         </div>
       )}
@@ -307,7 +307,7 @@ export default function StudentQnAPage() {
               <Edit2 className="w-3.5 h-3.5" /> এডিট
             </button>
             <button onClick={() => deletePost(post)} className="flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl cursor-pointer">
-              <Trash2 className="w-3.5 h-3.5" /> মুছুন
+              <Trash2 className="w-3.5 h-3.5" /> ডিলিট করো
             </button>
           </div>
         )}
@@ -328,7 +328,7 @@ export default function StudentQnAPage() {
               onClick={() => { resetForm(); setShowModal(true); }}
               className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs px-4 py-2.5 rounded-2xl transition cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> প্রশ্ন করুন
+              <Plus className="w-4 h-4" /> প্রশ্ন করো
             </button>
           </div>
         </div>
@@ -339,7 +339,7 @@ export default function StudentQnAPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="প্রশ্ন খুঁজুন..."
+              placeholder="প্রশ্ন খুঁজো..."
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:border-emerald-500"
             />
           </div>

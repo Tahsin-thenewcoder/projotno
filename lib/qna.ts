@@ -3,15 +3,28 @@ import { supabase } from '@/lib/supabase';
 export const ALL_SUBJECTS = 'সব বিষয়';
 
 export const SUBJECTS = [
+  'বাংলা',
+  'English',
+  'ICT',
   'Physics',
   'Chemistry',
   'Higher Math',
   'Biology',
-  'ICT',
+  'Logic',
+  'Civics and Good Governance',
+  'Geography',
+  'Economics',
+  'Sociology',
+  'Psychology',
+  'Arabic',
+  'Accounting',
+  'Statistics',
+  'Finance, Banking & Insurance',
   'Engineering Admission',
   'Medical Admission',
   'Varsity Admission',
   'General Academic',
+  'ISSB, Marine and Others',
 ];
 
 // প্রশ্নের অবস্থা অনুযায়ী ব্যাজ

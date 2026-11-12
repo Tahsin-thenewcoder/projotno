@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import React, { useState } from 'react';
+import { MENTORS_LIST } from '@/data/mentors';
 import { 
   Users, 
   Compass, 
@@ -18,7 +19,9 @@ import {
   Phone,
   Code2,
   Heart,
-  UserCheck
+  UserCheck,
+  GraduationCap,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function Home() {
@@ -26,6 +29,26 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-emerald-500 selection:text-white">
+      {/* Horizontal Continuous Flow Animation Style */}
+      <style jsx>{`
+        @keyframes mentorMarquee {
+          0% {
+            transform: translateX(0%);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+        .animate-mentor-flow {
+          display: flex;
+          width: max-content;
+          animation: mentorMarquee 26s linear infinite;
+        }
+        .animate-mentor-flow:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
       {/* Background Glows */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-40 -left-40 w-72 sm:w-96 h-72 sm:h-96 bg-emerald-200/40 rounded-full blur-3xl"></div>
@@ -54,6 +77,7 @@ export default function Home() {
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
             <a href="#features" className="hover:text-emerald-600 transition">ফিচারসমূহ</a>
             <a href="#targets" className="hover:text-emerald-600 transition">অ্যাডমিশন ট্র্যাকিং</a>
+            <Link href="/mentors" className="hover:text-purple-600 transition">মেন্টর প্যানেল</Link>
             <a href="#about" className="hover:text-emerald-600 transition">আমাদের উদ্দেশ্য</a>
             <a href="#contact" className="hover:text-emerald-600 transition">যোগাযোগ</a>
           </nav>
@@ -92,6 +116,7 @@ export default function Home() {
               <nav className="flex flex-col space-y-1 font-semibold text-slate-700 text-sm">
                 <a href="#features" onClick={() => setMobileMenuOpen(false)} className="py-2.5 px-3 rounded-lg hover:bg-slate-50 hover:text-emerald-600 border-b border-slate-100">ফিচারসমূহ</a>
                 <a href="#targets" onClick={() => setMobileMenuOpen(false)} className="py-2.5 px-3 rounded-lg hover:bg-slate-50 hover:text-emerald-600 border-b border-slate-100">অ্যাডমিশন ট্র্যাকিং</a>
+                <Link href="/mentors" onClick={() => setMobileMenuOpen(false)} className="py-2.5 px-3 rounded-lg hover:bg-slate-50 hover:text-purple-600 border-b border-slate-100">মেন্টর প্যানেল</Link>
                 <a href="#about" onClick={() => setMobileMenuOpen(false)} className="py-2.5 px-3 rounded-lg hover:bg-slate-50 hover:text-emerald-600 border-b border-slate-100">আমাদের উদ্দেশ্য</a>
                 <a href="#contact" onClick={() => setMobileMenuOpen(false)} className="py-2.5 px-3 rounded-lg hover:bg-slate-50 hover:text-emerald-600">যোগাযোগ</a>
               </nav>
@@ -228,9 +253,72 @@ export default function Home() {
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 sm:mb-3 group-hover:text-purple-600 transition">Non-Academic সাপোর্ট</h3>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                নতুন শহরে বাসা/মেস খোঁজা, মানসিক চাপ বা কোনো ব্যক্তিগত সমস্যায় **Anonymous (নাম না প্রকাশ করে)** সাহায্য চাওয়ার সুযোগ।
+                নতুন শহরে বাসা/মেস খোঁজা, মানসিক চাপ বা কোনো ব্যক্তিগত সমস্যায় <strong>Anonymous (নাম না প্রকাশ করে)</strong> সাহায্য চাওয়ার সুযোগ।
               </p>
             </div>
+          </Link>
+        </div>
+      </section>
+
+      {/* Mentors Horizontal Showcase Section (আমাদের গল্প ও লক্ষ্য-এর ঠিক আগে) */}
+      <section className="relative z-10 py-12 sm:py-16 bg-white border-t border-slate-200 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center space-y-2 mb-8">
+          <div className="inline-flex items-center gap-1.5 bg-purple-100 text-purple-800 text-[11px] sm:text-xs font-bold px-3.5 py-1 rounded-full border border-purple-200">
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+            সিনিয়র প্যানেল
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+            স্বপ্নজয়ের পথে তোমাদের পাশে আছেন যারা
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+            বিভিন্ন সেক্টরে প্রতিষ্ঠিত এবং বিশ্ববিদ্যালয়ে অধ্যয়নরত আমাদের স্কুলের বড়ভাই ও আপুরা
+          </p>
+        </div>
+
+        {/* Continuous Horizontal Flowing Strip */}
+        <div className="relative w-full overflow-hidden py-2">
+          {/* Left & Right Soft Fade Edges */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-24 bg-gradient-to-r from-white to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-24 bg-gradient-to-l from-white to-transparent z-10" />
+
+          <div className="animate-mentor-flow gap-4 px-4">
+            {[...MENTORS_LIST, ...MENTORS_LIST].map((mentor, index) => (
+              <Link
+                key={`${mentor.id}-${index}`}
+                href="/mentors"
+                className="w-44 sm:w-52 bg-slate-50 hover:bg-purple-50/60 border border-slate-200 hover:border-purple-300 rounded-2xl p-4 text-center transition shadow-xs hover:shadow-md shrink-0 flex flex-col items-center group"
+              >
+                {mentor.image ? (
+                  <img
+                    src={mentor.image}
+                    alt={mentor.shortName}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-purple-200 group-hover:scale-105 transition"
+                  />
+                ) : (
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-700 font-extrabold text-xl sm:text-2xl flex items-center justify-center border-2 border-purple-200 group-hover:scale-105 transition">
+                    {mentor.shortName.charAt(0)}
+                  </div>
+                )}
+
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base mt-3 group-hover:text-purple-700 transition">
+                  {mentor.shortName}
+                </h3>
+                <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 flex items-center justify-center gap-1">
+                  <GraduationCap className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span className="truncate">{mentor.institution}</span>
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Full Mentor Details Button */}
+        <div className="text-center mt-8 px-4">
+          <Link href="/mentors">
+            <button className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md shadow-purple-600/20 transition cursor-pointer">
+              সকল মেন্টর ও বিস্তারিত দেখুন
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </Link>
         </div>
       </section>
@@ -275,6 +363,7 @@ export default function Home() {
               <li><Link href="/register" className="hover:text-emerald-400 transition">রেজিস্ট্রেশন করুন</Link></li>
               <li><Link href="/login" className="hover:text-emerald-400 transition">লগইন করুন</Link></li>
               <li><Link href="/qna" className="hover:text-emerald-400 transition">Q&A ফোরাম</Link></li>
+              <li><Link href="/mentors" className="hover:text-purple-400 transition">আমাদের মেন্টরবৃন্দ</Link></li>
               <li><Link href="/anonymous-help" className="hover:text-emerald-400 transition">বেনামী সহায়তায় কথা বলুন</Link></li>
               <li><Link href="/apply-mentor" className="hover:text-purple-400 transition font-semibold">মেন্টর হতে আবেদন</Link></li>
             </ul>

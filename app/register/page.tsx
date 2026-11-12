@@ -15,7 +15,8 @@ import {
   Mail,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function Register() {
@@ -41,17 +42,23 @@ export default function Register() {
     setErrorMsg('');
 
     try {
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/login?verified=true`
+          : 'https://projotno-bkhs.vercel.app/login?verified=true';
+
       // 1. Supabase Auth-এ অ্যাকাউন্ট তৈরি (Email Redirect URL সহ)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: 'https://projotno-bkhs.vercel.app/login?verified=true',
+          emailRedirectTo: redirectUrl,
         },
       });
 
-      if (authError) {
-        throw new Error(authError.message);
+      if (authError) throw authError;
+      if (authData.user?.identities && authData.user.identities.length === 0) {
+        throw new Error('এই ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা আছে! অনুগ্রহ করে লগইন করুন অথবা নতুন ইমেইল ব্যবহার করুন।');
       }
 
       const user = authData.user;
@@ -69,6 +76,7 @@ export default function Register() {
           current_college: formData.currentCollege,
           target_field: formData.targetField,
           facebook_url: formData.facebookUrl,
+          role: 'student',
         },
       ]);
 
@@ -76,10 +84,15 @@ export default function Register() {
         throw new Error(profileError.message);
       }
 
+      // ভেরিফিকেশনের আগে যেন অটো-লগইন হয়ে ড্যাশবোর্ডে না ঢোকে
+      if (authData.session) {
+        await supabase.auth.signOut();
+      }
+
       setSubmitted(true);
     } catch (error: any) {
-      console.error('Registration Error Details:', error);
       setErrorMsg(error?.message || 'রেজিস্ট্রেশন করতে সমস্যা হয়েছে, আবার চেষ্টা করো।');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -98,7 +111,7 @@ export default function Register() {
           className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-emerald-600 transition mb-6 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          হোমপেজে ফিরে যান
+          হোমপেজে ফিরে যাও
         </Link>
 
         <div className="bg-white border border-slate-200/80 rounded-3xl shadow-xl p-6 sm:p-10 backdrop-blur-xl">
@@ -107,7 +120,7 @@ export default function Register() {
               <GraduationCap className="w-6 h-6" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              প্রযত্ন-এ একাউন্ট তৈরি করুন
+              প্রযত্ন-এ একাউন্ট তৈরি করো
             </h1>
             <p className="text-slate-500 text-sm">
               Star চিহ্নিত ফিল্ডগুলো অবশ্যই পূরণ করতে হবে। 
@@ -121,20 +134,28 @@ export default function Register() {
           )}
 
           {submitted ? (
-            <div className="text-center py-10 space-y-4">
+            <div className="text-center py-8 space-y-4">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900">রেজিস্ট্রেশন সফল হয়েছে!</h2>
-              <p className="text-slate-600 text-sm max-w-md mx-auto">
-                ধন্যবাদ, <span className="font-bold text-emerald-600">{formData.fullName}</span>! তোমার ইমেইলে একটি কনফার্মেশন লিংক পাঠানো হয়েছে। ইমেইল ভেরিফাই করে লগইন করো।
+              <p className="text-slate-600 text-sm max-w-md mx-auto leading-relaxed">
+                ধন্যবাদ, <span className="font-bold text-emerald-600">{formData.fullName}</span>! তোমার প্রদত্ত ইমেইলে (<span className="font-semibold text-slate-800">{formData.email}</span>) একটি ভেরিফিকেশন লিংক পাঠানো হয়েছে। ইমেইল ভেরিফাই করে লগইন করো।
               </p>
+
+              <div className="max-w-md mx-auto p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2.5 text-left">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-900 font-medium leading-relaxed">
+                  <strong>গুরুত্বপূর্ণ:</strong> ইনবক্সে ভেরিফিকেশন ইমেইলটি না পেলে অবশ্যই তোমার ইমেইলের <strong>Spam / Junk</strong> ফোল্ডার চেক করো।
+                </p>
+              </div>
+
               <div className="pt-4">
                 <Link 
                   href="/login" 
                   className="inline-block bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl transition shadow-md shadow-emerald-600/20"
                 >
-                  লগইন করুন
+                  লগইন পেজে যাও
                 </Link>
               </div>
             </div>
@@ -301,13 +322,13 @@ export default function Register() {
                 disabled={loading}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.01] active:scale-[0.99] mt-4 disabled:opacity-50 cursor-pointer"
               >
-                {loading ? 'একাউন্ট তৈরি হচ্ছে...' : 'একাউন্ট তৈরি সম্পন্ন করুন'}
+                {loading ? 'একাউন্ট তৈরি হচ্ছে...' : 'একাউন্ট তৈরি সম্পন্ন করো'}
               </button>
 
               <p className="text-center text-xs text-slate-500 mt-4">
                 আগে থেকেই একাউন্ট আছে?{' '}
                 <Link href="/login" className="text-emerald-600 font-bold hover:underline">
-                  লগইন করুন
+                  লগইন করো
                 </Link>
               </p>
             </form>

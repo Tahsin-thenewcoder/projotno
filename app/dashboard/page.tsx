@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -16,18 +17,24 @@ import {
   Home,
   X,
   UserCheck,
-  Star,
-  Award,
-  Zap,
-  TrendingUp,
   GraduationCap,
-  Phone
+  Phone,
+  Users,
+  Search,
+  RefreshCw,
+  Clock,
+  BarChart3
 } from 'lucide-react';
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [pendingMentors, setPendingMentors] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [showStudentList, setShowStudentList] = useState(false);
+  const [selectedField, setSelectedField] = useState<string>('ALL');
+  const [stats, setStats] = useState({ pendingQna: 0, solvedQna: 0, totalStudents: 0 });
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -53,8 +60,12 @@ export default function Dashboard() {
 
     if (data) {
       setProfile(data);
-      if (data.role === 'admin' || data.role === 'mentor') {
-        await loadPendingMentors();
+      const role = data.role?.toLowerCase();
+      if (role === 'admin' || role === 'mentor') {
+        await Promise.all([
+          loadPendingMentors(),
+          loadStudentsAndStats()
+        ]);
       }
     }
     await loadNotifications(session.user.id);
@@ -70,6 +81,32 @@ export default function Dashboard() {
     if (data) setPendingMentors(data);
   };
 
+  const loadStudentsAndStats = async () => {
+    const [studentsRes, pendingQnaRes, solvedQnaRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, ssc_batch, current_college, target_field, created_at')
+        .eq('role', 'student')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('qna_posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'open'),
+      supabase
+        .from('qna_posts')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['answered', 'resolved'])
+    ]);
+
+    const studentList = studentsRes.data || [];
+    setStudents(studentList);
+    setStats({
+      pendingQna: pendingQnaRes.count || 0,
+      solvedQna: solvedQnaRes.count || 0,
+      totalStudents: studentList.length
+    });
+  };
+
   const loadNotifications = async (userId: string) => {
     const { data } = await supabase
       .from('notifications')
@@ -79,7 +116,6 @@ export default function Dashboard() {
     if (data) setNotifications(data);
   };
 
-  // নোটিফিকেশনে ক্লিক করলে Read মার্ক হবে এবং সরাসরি উত্তর/চ্যাটে নিয়ে যাবে
   const handleNotifClick = async (n: any) => {
     if (!n.is_read) {
       await supabase.from('notifications').update({ is_read: true }).eq('id', n.id);
@@ -125,17 +161,77 @@ export default function Dashboard() {
     );
   }
 
+  // Pending Mentor হোল্ডিং স্ক্রিন
+  if (profile?.role?.toLowerCase() === 'pending_mentor') {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-800 flex items-center justify-center p-4 font-sans">
+        <div className="max-w-md w-full bg-white border border-amber-200 rounded-3xl p-6 sm:p-8 shadow-lg text-center space-y-4">
+          <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="inline-block bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+              Verification Pending
+            </span>
+            <h1 className="text-lg sm:text-xl font-extrabold text-slate-900">
+              স্বাগতম, {profile?.full_name}!
+            </h1>
+          </div>
+
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            আপনার প্রোফাইল এখনো <strong>অ্যাডমিন কর্তৃক ভেরিফাই করা হয়নি</strong>। অ্যাডমিন অ্যাপ্রুভালের পর আপনি মেন্টর হিসেবে পূর্ণ অ্যাক্সেস পাবেন।
+          </p>
+
+          <div className="p-3.5 bg-purple-50 border border-purple-100 rounded-2xl text-xs text-purple-900 font-medium leading-relaxed">
+            দ্রুত ভেরিফিকেশনের জন্য অনুগ্রহ করে কর্তৃপক্ষের সাথে যোগাযোগ করুন।
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+            <button
+              onClick={() => window.location.reload()}
+              className="flex-1 py-2.5 px-4 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              স্ট্যাটাস রিফ্রেশ করুন
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex-1 py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              লগআউট
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isAdmin = ['admin', 'mentor'].includes(profile?.role?.toLowerCase());
   const unreadNotifs = notifications.filter(n => !n.is_read);
 
-  const getBadgeTitle = (helps: number) => {
-    if (helps >= 50) return { name: 'Legend 👑', color: 'bg-amber-400 text-amber-950 border-amber-300' };
-    if (helps >= 20) return { name: 'Top Helper 🥇', color: 'bg-purple-300 text-purple-950 border-purple-200' };
-    if (helps >= 5) return { name: 'Active ⭐', color: 'bg-blue-300 text-blue-950 border-blue-200' };
-    return { name: 'Rising Star 🚀', color: 'bg-emerald-300 text-emerald-950 border-emerald-200' };
+  // কোন ফিল্ডে কতজন স্টুডেন্ট আগ্রহী তার হিসাব
+  const fieldCounts = {
+    Engineering: students.filter((s) => s.target_field === 'Engineering').length,
+    Medical: students.filter((s) => s.target_field === 'Medical').length,
+    Varsity: students.filter((s) => s.target_field === 'Varsity').length,
+    Defence: students.filter((s) => s.target_field === 'Defence').length,
   };
 
-  const mentorBadge = getBadgeTitle(profile?.total_helps || 0);
+  // ফিল্ড ফিল্টার + সার্চ ফিল্টার
+  const filteredStudents = students.filter((s) => {
+    const matchesField = selectedField === 'ALL' || s.target_field === selectedField;
+    const q = studentSearch.toLowerCase().trim();
+    if (!q) return matchesField;
+    return (
+      matchesField &&
+      (s.full_name?.toLowerCase().includes(q) ||
+        s.current_college?.toLowerCase().includes(q) ||
+        s.ssc_batch?.toLowerCase().includes(q) ||
+        s.target_field?.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-28 sm:pb-8 pt-3 sm:pt-6 px-3 sm:px-4 font-sans">
@@ -246,41 +342,41 @@ export default function Dashboard() {
         {isAdmin ? (
           <div className="space-y-3.5 sm:space-y-6">
             
-            {/* Optimized Mobile Performance Card */}
+            {/* Real-time Platform Stats Card */}
             <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-4 sm:p-6 text-white shadow-xs space-y-3">
               <div className="flex items-center justify-between gap-2 border-b border-purple-700/60 pb-2.5">
                 <div className="flex items-center gap-1.5">
-                  <Award className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 shrink-0" />
-                  <h2 className="text-xs sm:text-base font-bold">ব্যাজ ও পারফর্মেন্স</h2>
+                  <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300 shrink-0" />
+                  <h2 className="text-xs sm:text-base font-bold">প্ল্যাটফর্ম লাইভ আপডেট</h2>
                 </div>
-                <span className={`text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full border ${mentorBadge.color}`}>
-                  {mentorBadge.name}
+                <span className="text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/15 text-purple-100 border border-white/20">
+                  Live Status
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center pt-0.5">
                 <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2 sm:p-3 border border-white/10">
-                  <div className="flex items-center justify-center gap-0.5 text-amber-400 font-extrabold text-base sm:text-xl">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 shrink-0" />
-                    <span>{profile?.avg_rating || '5.0'}</span>
+                  <div className="flex items-center justify-center gap-1 text-amber-300 font-extrabold text-base sm:text-xl">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span>{stats.pendingQna}</span>
                   </div>
-                  <p className="text-[9px] sm:text-xs text-purple-200 mt-0.5">গড় রেটিং</p>
+                  <p className="text-[9px] sm:text-xs text-purple-200 mt-0.5">অপেক্ষমাণ প্রশ্ন</p>
                 </div>
 
                 <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2 sm:p-3 border border-white/10">
-                  <div className="flex items-center justify-center gap-0.5 text-emerald-400 font-extrabold text-base sm:text-xl">
-                    <TrendingUp className="w-3.5 h-3.5 shrink-0" />
-                    <span>{profile?.total_helps || 0}</span>
+                  <div className="flex items-center justify-center gap-1 text-emerald-300 font-extrabold text-base sm:text-xl">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{stats.solvedQna}</span>
                   </div>
-                  <p className="text-[9px] sm:text-xs text-purple-200 mt-0.5">মোট সাহায্য</p>
+                  <p className="text-[9px] sm:text-xs text-purple-200 mt-0.5">মোট সমাধান</p>
                 </div>
 
                 <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2 sm:p-3 border border-white/10">
-                  <div className="flex items-center justify-center gap-0.5 text-cyan-300 font-extrabold text-base sm:text-xl">
-                    <Zap className="w-3.5 h-3.5 shrink-0" />
-                    <span>{profile?.total_points || 0}</span>
+                  <div className="flex items-center justify-center gap-1 text-cyan-300 font-extrabold text-base sm:text-xl">
+                    <Users className="w-3.5 h-3.5 shrink-0" />
+                    <span>{stats.totalStudents}</span>
                   </div>
-                  <p className="text-[9px] sm:text-xs text-purple-200 mt-0.5">পয়েন্ট</p>
+                  <p className="text-[9px] sm:text-xs text-purple-200 mt-0.5">নিবন্ধিত শিক্ষার্থী</p>
                 </div>
               </div>
             </div>
@@ -352,12 +448,136 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Registered Student List & Field Interest Breakdown (Collapsible) */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between gap-2 border-b pb-3">
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <h3 className="font-bold text-slate-900 text-xs sm:text-base">
+                    নিবন্ধিত শিক্ষার্থী ও লক্ষ্যভিত্তিক আগ্রহ ({students.length})
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => setShowStudentList(!showStudentList)}
+                  className="text-[11px] font-bold px-3 py-1.5 rounded-xl border transition cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 shrink-0"
+                >
+                  {showStudentList ? 'তালিকা লুকান ▲' : 'তালিকা দেখুন ▼'}
+                </button>
+              </div>
+
+              {/* Field-wise Interest Counter Pills (ক্লিক করলেই তালিকা ওপেন ও ফিল্টার হবে) */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <button
+                  onClick={() => {
+                    if (showStudentList && selectedField === 'ALL') {
+                      setShowStudentList(false);
+                    } else {
+                      setSelectedField('ALL');
+                      setShowStudentList(true);
+                    }
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                    showStudentList && selectedField === 'ALL'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 block">সকল শিক্ষার্থী</span>
+                  <span className="text-sm sm:text-base font-extrabold">{students.length} জন</span>
+                </button>
+
+                {[
+                  { id: 'Engineering', label: 'Engineering', count: fieldCounts.Engineering, activeClass: 'bg-blue-600 text-white border-blue-600' },
+                  { id: 'Medical', label: 'Medical', count: fieldCounts.Medical, activeClass: 'bg-emerald-600 text-white border-emerald-600' },
+                  { id: 'Varsity', label: 'Varsity', count: fieldCounts.Varsity, activeClass: 'bg-purple-600 text-white border-purple-600' },
+                  { id: 'Defence', label: 'Defence', count: fieldCounts.Defence, activeClass: 'bg-amber-600 text-white border-amber-600' },
+                ].map((f) => {
+                  const isActive = showStudentList && selectedField === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => {
+                        if (isActive) {
+                          setShowStudentList(false);
+                        } else {
+                          setSelectedField(f.id);
+                          setShowStudentList(true);
+                        }
+                      }}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                        isActive
+                          ? `${f.activeClass} shadow-xs`
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-[10px] opacity-80 block">{f.label}</span>
+                      <span className="text-sm sm:text-base font-extrabold">{f.count} জন</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* শুধুমাত্র ক্লিক করলেই সার্চ বার ও স্টুডেন্ট কার্ড লিস্ট দেখাবে */}
+              {showStudentList && (
+                <div className="pt-2 border-t border-slate-100 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      দেখানো হচ্ছে: <strong className="text-slate-800">{selectedField === 'ALL' ? 'সকল বিভাগ' : selectedField}</strong> ({filteredStudents.length} জন)
+                    </span>
+
+                    <div className="relative w-full sm:w-64">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        value={studentSearch}
+                        onChange={(e) => setStudentSearch(e.target.value)}
+                        placeholder="নাম, কলেজ বা ব্যাচ খুঁজুন..."
+                        className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {filteredStudents.length === 0 ? (
+                    <p className="text-xs text-slate-400 py-6 text-center">কোনো শিক্ষার্থী খুঁজে পাওয়া যায়নি।</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto pr-0.5">
+                      {filteredStudents.map((s) => (
+                        <div
+                          key={s.id}
+                          className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-emerald-300 transition space-y-1.5 text-xs"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-bold text-slate-900 truncate">{s.full_name}</span>
+                            <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                              SSC {s.ssc_batch}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-0.5">
+                            <p className="text-[11px] text-slate-600 flex items-center gap-1 truncate">
+                              <GraduationCap className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="truncate">{s.current_college || 'কলেজ দেওয়া হয়নি'}</span>
+                            </p>
+
+                            <span className="font-semibold text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 shrink-0">
+                              {s.target_field || 'General'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Admin Verification Card */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs space-y-3">
               <div className="flex items-center justify-between gap-2 border-b pb-2.5">
                 <h3 className="font-bold text-slate-900 text-xs sm:text-base flex items-center gap-1.5">
                   <UserCheck className="w-4 h-4 text-purple-600 shrink-0" />
-                  <span>পেন্ডিং আবেদন ({pendingMentors.length})</span>
+                  <span>পেন্ডিং মেন্টর আবেদন ({pendingMentors.length})</span>
                 </h3>
                 <span className="text-[9px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-md border border-purple-200">
                   Admin
@@ -426,7 +646,7 @@ export default function Dashboard() {
                   <h3 className="font-bold text-slate-900 text-xs sm:text-base group-hover:text-emerald-600 transition">একাডেমিক Q&A ফোরাম</h3>
                   <p className="text-[11px] sm:text-xs text-slate-500">পড়াশোনা বা ভর্তি পরীক্ষার যেকোনো প্রশ্ন সিনিয়র মেন্টরদের কাছে করো।</p>
                 </div>
-                <span className="text-xs font-bold text-emerald-600 mt-3 block">প্রশ্ন করুন &rarr;</span>
+                <span className="text-xs font-bold text-emerald-600 mt-3 block">প্রশ্ন করো &rarr;</span>
               </Link>
 
               <Link 
@@ -440,7 +660,7 @@ export default function Dashboard() {
                   <h3 className="font-bold text-slate-900 text-xs sm:text-base group-hover:text-purple-600 transition">বেনামী হেল্প সাপোর্ট</h3>
                   <p className="text-[11px] sm:text-xs text-slate-500">মানসিক চাপ বা যেকোনো সমস্যার কথা পরিচয় গোপন রেখে শেয়ার করো।</p>
                 </div>
-                <span className="text-xs font-bold text-purple-600 mt-3 block">কথা বলুন &rarr;</span>
+                <span className="text-xs font-bold text-purple-600 mt-3 block">কথা বলো &rarr;</span>
               </Link>
             </div>
           </div>
