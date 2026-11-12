@@ -10,11 +10,11 @@ export interface MentorItem {
 export const MENTORS_LIST: MentorItem[] = [
   {
     id: '1',
-    shortName: 'Mentor 1',
-    fullName: 'Mentor 1',
-    institution: 'Mentors University (CSE)',
+    shortName: 'Zami',
+    fullName: 'Shafi Ullah Zami',
+    institution: 'SOMC (MBBS)',
     sscBatch: '2020',
-    image: '', // public/mentors/tahsin.jpg ফোল্ডারে ছবি রাখলে দেখাবে
+    image: '/mentors/Zami.jpg', // public/mentors/tahsin.jpg ফোল্ডারে ছবি রাখলে দেখাবে
   },
   {
     id: '2',
