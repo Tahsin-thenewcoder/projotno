@@ -48,13 +48,13 @@ export default function MentorsPage() {
         <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-md space-y-2">
           <div className="inline-flex items-center gap-1.5 bg-white/15 px-3 py-1 rounded-full text-xs font-semibold text-purple-100">
             <ShieldCheck className="w-4 h-4 text-cyan-300" />
-            সূচনা ছাত্র সংগঠন • সিনিয়র মেন্টর প্যানেল
+            সিনিয়র মেন্টর প্যানেল
           </div>
           <h1 className="text-xl sm:text-3xl font-extrabold">
             আমাদের অভিজ্ঞ মেন্টরবৃন্দ ({MENTORS_LIST.length})
           </h1>
           <p className="text-xs sm:text-sm text-purple-200 max-w-2xl leading-relaxed">
-            বহদ্দারকাটা উচ্চ বিদ্যালয়ের প্রাক্তন শিক্ষার্থী যারা বর্তমানে দেশের শীর্ষস্থানীয় বিশ্ববিদ্যালয়, মেডিকেল ও প্রকৌশল প্রতিষ্ঠানে অধ্যয়নরত।
+            বহদ্দারকাটা উচ্চ বিদ্যালয়ের প্রাক্তন শিক্ষার্থী যারা নিজ সেক্টরে প্রতিষ্ঠিত এবং আরো যারা বিশ্ববিদ্যালয়, মেডিকেল ও প্রকৌশল প্রতিষ্ঠানে অধ্যয়নরত তাদের নিয়ে আমাদের অভিজ্ঞ মেন্টর প্যানেল।
           </p>
         </div>
 
