@@ -1,9 +1,9 @@
 "use client";
-
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import NotificationBell from '@/components/qna/NotificationBell';
 import { 
   User, 
   LogOut, 
@@ -13,9 +13,7 @@ import {
   HelpCircle,
   CheckCircle2,
   HeartHandshake,
-  Bell,
   Home,
-  X,
   UserCheck,
   GraduationCap,
   Phone,
@@ -28,14 +26,13 @@ import {
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [userId, setUserId] = useState<string>('');
   const [pendingMentors, setPendingMentors] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [studentSearch, setStudentSearch] = useState('');
   const [showStudentList, setShowStudentList] = useState(false);
   const [selectedField, setSelectedField] = useState<string>('ALL');
   const [stats, setStats] = useState({ pendingQna: 0, solvedQna: 0, totalStudents: 0 });
-  const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const router = useRouter();
@@ -51,6 +48,8 @@ export default function Dashboard() {
       router.push('/login');
       return;
     }
+
+    setUserId(session.user.id);
 
     const { data } = await supabase
       .from('profiles')
@@ -68,7 +67,7 @@ export default function Dashboard() {
         ]);
       }
     }
-    await loadNotifications(session.user.id);
+
     setLoading(false);
   };
 
@@ -107,30 +106,6 @@ export default function Dashboard() {
     });
   };
 
-  const loadNotifications = async (userId: string) => {
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (data) setNotifications(data);
-  };
-
-  const handleNotifClick = async (n: any) => {
-    if (!n.is_read) {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id);
-      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, is_read: true } : item)));
-    }
-    setShowNotifMenu(false);
-
-    if (n.link) {
-      router.push(n.link);
-    } else if (n.post_id) {
-      const basePath = ['mentor', 'admin'].includes(profile?.role?.toLowerCase()) ? '/mentor/qna' : '/qna';
-      router.push(`${basePath}?post=${n.post_id}`);
-    }
-  };
-
   const handleApproveMentor = async (mentorId: string) => {
     setApprovingId(mentorId);
     try {
@@ -138,6 +113,7 @@ export default function Dashboard() {
         .from('profiles')
         .update({ role: 'mentor' })
         .eq('id', mentorId);
+
       if (error) throw error;
       alert('মেন্টর আবেদন সফলভাবে অ্যাপ্রুভ করা হয়েছে!');
       setPendingMentors(pendingMentors.filter(m => m.id !== mentorId));
@@ -169,7 +145,6 @@ export default function Dashboard() {
           <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
             <ShieldAlert className="w-8 h-8" />
           </div>
-
           <div className="space-y-1.5">
             <span className="inline-block bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
               Verification Pending
@@ -178,15 +153,12 @@ export default function Dashboard() {
               স্বাগতম, {profile?.full_name}!
             </h1>
           </div>
-
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
             আপনার প্রোফাইল এখনো <strong>অ্যাডমিন কর্তৃক ভেরিফাই করা হয়নি</strong>। অ্যাডমিন অ্যাপ্রুভালের পর আপনি মেন্টর হিসেবে পূর্ণ অ্যাক্সেস পাবেন।
           </p>
-
           <div className="p-3.5 bg-purple-50 border border-purple-100 rounded-2xl text-xs text-purple-900 font-medium leading-relaxed">
             দ্রুত ভেরিফিকেশনের জন্য অনুগ্রহ করে কর্তৃপক্ষের সাথে যোগাযোগ করুন।
           </div>
-
           <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
             <button
               onClick={() => window.location.reload()}
@@ -209,7 +181,6 @@ export default function Dashboard() {
   }
 
   const isAdmin = ['admin', 'mentor'].includes(profile?.role?.toLowerCase());
-  const unreadNotifs = notifications.filter(n => !n.is_read);
 
   // কোন ফিল্ডে কতজন স্টুডেন্ট আগ্রহী তার হিসাব
   const fieldCounts = {
@@ -263,53 +234,7 @@ export default function Dashboard() {
 
             {/* Notification & Logout Compact Action Buttons */}
             <div className="flex items-center gap-1.5 shrink-0">
-              <div className="relative">
-                <button 
-                  onClick={() => setShowNotifMenu(!showNotifMenu)}
-                  className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition relative cursor-pointer"
-                  title="নোটিফিকেশন"
-                >
-                  <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {unreadNotifs.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
-                      {unreadNotifs.length}
-                    </span>
-                  )}
-                </button>
-
-                {showNotifMenu && (
-                  <>
-                    <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs z-40 sm:hidden" onClick={() => setShowNotifMenu(false)} />
-                    <div className="fixed sm:absolute right-3 sm:right-0 top-16 sm:top-auto mt-2 w-[90vw] sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-3.5 z-50 space-y-2">
-                      <div className="flex items-center justify-between border-b pb-2">
-                        <h3 className="font-bold text-xs text-slate-700">নোটিফিকেশন সমূহ</h3>
-                        <button onClick={() => setShowNotifMenu(false)} className="sm:hidden text-slate-400"><X className="w-4 h-4" /></button>
-                      </div>
-                      {notifications.length === 0 ? (
-                        <p className="text-xs text-slate-400 py-3 text-center">কোনো নতুন নোটিফিকেশন নেই</p>
-                      ) : (
-                        <div className="max-h-56 overflow-y-auto space-y-1.5">
-                          {notifications.map((n) => (
-                            <div 
-                              key={n.id} 
-                              onClick={() => handleNotifClick(n)}
-                              className={`p-2.5 rounded-xl text-xs cursor-pointer transition ${
-                                n.is_read ? 'bg-slate-50 text-slate-500 hover:bg-slate-100' : 'bg-emerald-50 text-slate-800 border border-emerald-100 hover:bg-emerald-100/70'
-                              }`}
-                            >
-                              {n.title && <p className="font-bold text-slate-900">{n.title}</p>}
-                              {n.message && <p className={n.title ? 'text-[11px] text-slate-600 mt-0.5' : 'font-semibold'}>{n.message}</p>}
-                              <span className="text-[9px] text-slate-400 mt-1 block">
-                                {new Date(n.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+              {userId && <NotificationBell userId={userId} />}
 
               <button 
                 onClick={handleLogout}
@@ -457,7 +382,6 @@ export default function Dashboard() {
                     নিবন্ধিত শিক্ষার্থী ও লক্ষ্যভিত্তিক আগ্রহ ({students.length})
                   </h3>
                 </div>
-
                 <button
                   onClick={() => setShowStudentList(!showStudentList)}
                   className="text-[11px] font-bold px-3 py-1.5 rounded-xl border transition cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 shrink-0"
@@ -466,7 +390,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* Field-wise Interest Counter Pills (ক্লিক করলেই তালিকা ওপেন ও ফিল্টার হবে) */}
+              {/* Field-wise Interest Counter Pills */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 <button
                   onClick={() => {
@@ -518,14 +442,13 @@ export default function Dashboard() {
                 })}
               </div>
 
-              {/* শুধুমাত্র ক্লিক করলেই সার্চ বার ও স্টুডেন্ট কার্ড লিস্ট দেখাবে */}
+              {/* Search Bar & Student Card List */}
               {showStudentList && (
                 <div className="pt-2 border-t border-slate-100 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span className="text-[11px] font-semibold text-slate-500">
                       দেখানো হচ্ছে: <strong className="text-slate-800">{selectedField === 'ALL' ? 'সকল বিভাগ' : selectedField}</strong> ({filteredStudents.length} জন)
                     </span>
-
                     <div className="relative w-full sm:w-64">
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
                       <input
@@ -553,13 +476,11 @@ export default function Dashboard() {
                               SSC {s.ssc_batch}
                             </span>
                           </div>
-
                           <div className="flex items-center justify-between gap-2 pt-0.5">
                             <p className="text-[11px] text-slate-600 flex items-center gap-1 truncate">
                               <GraduationCap className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span className="truncate">{s.current_college || 'কলেজ দেওয়া হয়নি'}</span>
                             </p>
-
                             <span className="font-semibold text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 shrink-0">
                               {s.target_field || 'General'}
                             </span>
