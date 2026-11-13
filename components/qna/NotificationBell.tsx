@@ -2,15 +2,41 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Bell, X } from 'lucide-react';
+import { Bell, X, BellRing, Check } from 'lucide-react';
 import { timeAgo } from '@/lib/qna';
 
-// বেল আইকন: লাইভ নোটিফিকেশন, ক্লিক করলে ওই প্রশ্নে নিয়ে যায়
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export default function NotificationBell({ userId }: { userId: string }) {
   const [items, setItems] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   useEffect(() => {
+    // 1. Register Service Worker & check existing subscription
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then(async (reg) => {
+          const existingSub = await reg.pushManager.getSubscription();
+          if (existingSub && Notification.permission === 'granted') {
+            setPushEnabled(true);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // 2. Fetch existing notifications
     supabase
       .from('notifications')
       .select('*')
@@ -19,18 +45,66 @@ export default function NotificationBell({ userId }: { userId: string }) {
       .limit(30)
       .then(({ data }) => data && setItems(data));
 
+    // 3. Realtime listener
     const channel = supabase
       .channel(`notif-${userId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => setItems((cur) => [payload.new as any, ...cur])
+        (payload) => {
+          const newNotif = payload.new as any;
+          setItems((cur) => [newNotif, ...cur]);
+        }
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [userId]);
+
+  const enablePushNotifications = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert('আপনার ব্রাউজার পুশ নোটিফিকেশন সাপোর্ট করে না।');
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('ব্রাউজার সেটিংস থেকে Notification Allow করে দিন।');
+        return;
+      }
+
+      const reg = await navigator.serviceWorker.ready;
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) return;
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+
+      const subJson = subscription.toJSON();
+      if (subJson.endpoint && subJson.keys?.p256dh && subJson.keys?.auth) {
+        await supabase.from('push_subscriptions').upsert(
+          {
+            user_id: userId,
+            endpoint: subJson.endpoint,
+            p256dh: subJson.keys.p256dh,
+            auth: subJson.keys.auth,
+          },
+          { onConflict: 'endpoint' }
+        );
+        setPushEnabled(true);
+      }
+    } catch (err) {
+      console.error('Push subscription error:', err);
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   const unread = items.filter((n) => !n.is_read).length;
 
@@ -68,7 +142,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
               <h3 className="font-bold text-xs text-slate-700">নোটিফিকেশন</h3>
               <div className="flex items-center gap-2">
                 {unread > 0 && (
-                  <button onClick={markAll} className="text-[10px] font-bold text-emerald-600">
+                  <button onClick={markAll} className="text-[10px] font-bold text-emerald-600 cursor-pointer">
                     সব পড়া হয়েছে
                   </button>
                 )}
@@ -77,13 +151,36 @@ export default function NotificationBell({ userId }: { userId: string }) {
                 </button>
               </div>
             </div>
+
+            {/* Push Notification Enable Banner */}
+            {!pushEnabled ? (
+              <div className="bg-emerald-50 border-b border-emerald-100 px-3.5 py-2.5 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-emerald-900 font-medium leading-tight">
+                  ফোন/পিসিতে সরাসরি নোটিফিকেশন পেতে:
+                </span>
+                <button
+                  onClick={enablePushNotifications}
+                  disabled={subscribing}
+                  className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  <BellRing className="w-3 h-3" />
+                  {subscribing ? 'চালু হচ্ছে...' : 'চালু করুন'}
+                </button>
+              </div>
+            ) : (
+              <div className="bg-slate-50 border-b border-slate-100 px-3.5 py-1.5 flex items-center gap-1.5 text-[10px] text-emerald-700 font-semibold">
+                <Check className="w-3 h-3" />
+                ডিভাইস পুশ নোটিফিকেশন চালু আছে
+              </div>
+            )}
+
             <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
               {items.length === 0 && <p className="text-xs text-slate-400 text-center py-8">কোনো নোটিফিকেশন নেই</p>}
               {items.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => openItem(n)}
-                  className={`w-full text-left px-3.5 py-2.5 hover:bg-slate-50 ${n.is_read ? '' : 'bg-emerald-50/60'}`}
+                  className={`w-full text-left px-3.5 py-2.5 hover:bg-slate-50 cursor-pointer ${n.is_read ? '' : 'bg-emerald-50/60'}`}
                 >
                   <p className="text-xs font-bold text-slate-800">{n.title}</p>
                   <p className="text-[11px] text-slate-500 line-clamp-2">{n.message}</p>

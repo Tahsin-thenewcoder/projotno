@@ -1,0 +1,21 @@
+{
+  "name": "প্রযত্ন — সূচনা ছাত্র সংগঠন",
+  "short_name": "প্রযত্ন",
+  "description": "বহদ্দারকাটা উচ্চ বিদ্যালয়ের জুনিয়রদের জন্য ডিজিটাল সাপোর্ট প্ল্যাটফর্ম",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
