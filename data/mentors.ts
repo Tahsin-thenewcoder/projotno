@@ -18,11 +18,11 @@ export const MENTORS_LIST: MentorItem[] = [
   },
   {
     id: '2',
-    shortName: 'Mentor 2',
-    fullName: 'Mentor 2',
-    institution: 'Mentors University (EEE)',
+    shortName: 'Jihan',
+    fullName: 'Montasirul Islam Jihan',
+    institution: 'RU (Pharmacy)',
     sscBatch: '2020',
-    image: '', // ছবি না থাকলে নামের প্রথম অক্ষর 'R' দিয়ে অ্যাভাটার দেখাবে
+    image: '/mentors/Jihan.2.jpg', // ছবি না থাকলে নামের প্রথম অক্ষর 'R' দিয়ে অ্যাভাটার দেখাবে
   },
   {
     id: '3',
